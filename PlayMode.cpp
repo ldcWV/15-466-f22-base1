@@ -111,34 +111,36 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 	if (evt.type == SDL_KEYDOWN) {
 		if (evt.key.keysym.sym == SDLK_LEFT) {
-			left.downs += 1;
-			left.pressed = true;
+			left_pressed = true;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_RIGHT) {
-			right.downs += 1;
-			right.pressed = true;
+			right_pressed = true;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_UP) {
-			up.downs += 1;
-			up.pressed = true;
+			up_pressed = true;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_DOWN) {
-			down.downs += 1;
-			down.pressed = true;
+			down_pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_SPACE) {
+			space_pressed = true;
 			return true;
 		}
 	} else if (evt.type == SDL_KEYUP) {
 		if (evt.key.keysym.sym == SDLK_LEFT) {
-			left.pressed = false;
+			left_pressed = false;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_RIGHT) {
-			right.pressed = false;
+			right_pressed = false;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_UP) {
-			up.pressed = false;
+			up_pressed = false;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_DOWN) {
-			down.pressed = false;
+			down_pressed = false;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_SPACE) {
+			space_pressed = false;
 			return true;
 		}
 	}
@@ -147,23 +149,29 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
+	static float sqrt2_recip = 1.f / sqrtf(2.f);
 
 	//slowly rotates through [0,1):
 	// (will be used to set background color)
 	background_fade += elapsed / 10.0f;
 	background_fade -= std::floor(background_fade);
 
-	constexpr float PlayerSpeed = 30.0f;
-	if (left.pressed) player_at.x -= PlayerSpeed * elapsed;
-	if (right.pressed) player_at.x += PlayerSpeed * elapsed;
-	if (down.pressed) player_at.y -= PlayerSpeed * elapsed;
-	if (up.pressed) player_at.y += PlayerSpeed * elapsed;
+	float PlayerSpeed = space_pressed ? 150.f : 60.0f;
 
-	//reset button press counters:
-	left.downs = 0;
-	right.downs = 0;
-	up.downs = 0;
-	down.downs = 0;
+	int x_delta = 0;
+	int y_delta = 0;
+	if (left_pressed) x_delta--;
+	if (right_pressed) x_delta++;
+	if (down_pressed) y_delta--;
+	if (up_pressed) y_delta++;
+
+	// Make diagonal movement same speed
+	if (x_delta && y_delta) PlayerSpeed *= sqrt2_recip;
+
+	if (left_pressed) player_at.x -= PlayerSpeed * elapsed;
+	if (right_pressed) player_at.x += PlayerSpeed * elapsed;
+	if (down_pressed) player_at.y -= PlayerSpeed * elapsed;
+	if (up_pressed) player_at.y += PlayerSpeed * elapsed;
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {

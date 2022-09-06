@@ -18,10 +18,7 @@ struct PlayMode : Mode {
 	//----- game state -----
 
 	//input tracking:
-	struct Button {
-		uint8_t downs = 0;
-		uint8_t pressed = 0;
-	} left, right, down, up;
+	uint8_t left_pressed, right_pressed, down_pressed, up_pressed, space_pressed;
 
 	//some weird background animation:
 	float background_fade = 0.0f;
