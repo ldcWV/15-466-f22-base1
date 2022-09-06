@@ -42,6 +42,9 @@ struct PlayMode : Mode {
 	uint16_t cur_obstacle = 0;
 	uint16_t next_obstacle = 0;
 
+	//total elapsed time
+	float tot_elapsed = 0;
+
 	//----- drawing handled by PPU466 -----
 
 	PPU466 ppu;

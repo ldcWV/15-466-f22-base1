@@ -3,8 +3,9 @@ import glob
 
 out = open('processed_obstacles.dat', 'w')
 
-# png reading from https://stackoverflow.com/questions/31386096/importing-png-files-into-numpy
 paths = glob.glob('raw_obstacles/*.png')
+paths.insert(0, "start.png")
+
 out.write(str(len(paths)) + '\n')
 for im_path in paths:
     im = plt.imread(im_path)

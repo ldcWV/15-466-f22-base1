@@ -20,14 +20,10 @@ PlayMode::PlayMode() {
 	//  make yourself a script that spits out the code that you paste in here
 	//   and check that script into your repository.
 
-	// Completely blank obstacle to start
-	for (int i = 0; i < 32; i++) obstacles[0].mask[i] = 0;
-
 	// Loading in the actual obstacles
 	std::ifstream fin (data_path("data/processed_obstacles.dat"));
 	fin >> num_obstacles;
-	num_obstacles++;
-	for (int i = 1; i < num_obstacles; i++) {
+	for (int i = 0; i < num_obstacles; i++) {
 		for (int j = 0; j < 32; j++) {
 			uint32_t row = 0;
 			for (int k = 0; k < 30; k++) {
@@ -92,6 +88,7 @@ PlayMode::PlayMode() {
 	//set starting values of scroll and player position
 	uint32_t screen_width_px = PPU466::BackgroundWidth/2 * 8;
 	uint32_t screen_height_px = PPU466::BackgroundHeight/2 * 8;
+	scroll = float(screen_width_px);
 	player_at.x = float(screen_width_px);
 	player_at.y = float(screen_height_px / 2);
 
@@ -144,7 +141,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 void PlayMode::update(float elapsed) {
 	// Adjust scrolling
 	{
-		float ScrollSpeed = 80.f;
+		tot_elapsed += elapsed;
+		float ScrollSpeed = tot_elapsed < 1 ? 20.f : 80.f;
 		scroll += ScrollSpeed * elapsed;
 	}
 
