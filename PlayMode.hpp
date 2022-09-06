@@ -24,7 +24,7 @@ struct PlayMode : Mode {
 	//----- game state -----
 
 	//input tracking:
-	uint8_t left_pressed, right_pressed, down_pressed, up_pressed, space_pressed = false;
+	uint8_t left_pressed = false, right_pressed = false, down_pressed = false, up_pressed = false, space_pressed = false;
 
 	//player position:
 	glm::vec2 player_at = glm::vec2(0.0f);
