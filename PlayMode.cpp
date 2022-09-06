@@ -6,6 +6,10 @@
 //for glm::value_ptr() :
 #include <glm/gtc/type_ptr.hpp>
 
+#include "data_path.hpp"
+
+#include <fstream>
+
 #include <random>
 
 PlayMode::PlayMode() {
@@ -16,16 +20,24 @@ PlayMode::PlayMode() {
 	//  make yourself a script that spits out the code that you paste in here
 	//   and check that script into your repository.
 
-	// TODO: load obstacles
-	Obstacle test0;
-	for (int i = 0; i < 32; i++) test0.mask[i] = 0;
-	Obstacle test1;
-	for (int i = 0; i < 32; i++) test1.mask[i] = 0xFFFFFFFF;
-	Obstacle test2;
-	for (int i = 0; i < 32; i++) test2.mask[i] = 0xF0F0F0F0;
-	obstacles[0] = test0;
-	obstacles[1] = test1;
-	obstacles[2] = test2;
+	// Completely blank obstacle to start
+	for (int i = 0; i < 32; i++) obstacles[0].mask[i] = 0;
+
+	// Loading in the actual obstacles
+	std::ifstream fin (data_path("data/processed_obstacles.dat"));
+	fin >> num_obstacles;
+	num_obstacles++;
+	for (int i = 1; i < num_obstacles; i++) {
+		for (int j = 0; j < 32; j++) {
+			uint32_t row = 0;
+			for (int k = 0; k < 30; k++) {
+				int x; fin >> x;
+				row <<= 1;
+				row += x;
+			}
+			obstacles[i].mask[j] = row;
+		}
+	}
 
 	//used for obstacle (filled):
 	ppu.palette_table[0] = {
@@ -77,6 +89,12 @@ PlayMode::PlayMode() {
 		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
 	};
 
+	//set starting values of scroll and player position
+	uint32_t screen_width_px = PPU466::BackgroundWidth/2 * 8;
+	uint32_t screen_height_px = PPU466::BackgroundHeight/2 * 8;
+	player_at.x = float(screen_width_px);
+	player_at.y = float(screen_height_px / 2);
+
 }
 
 PlayMode::~PlayMode() {
@@ -126,20 +144,28 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 void PlayMode::update(float elapsed) {
 	// Adjust scrolling
 	{
-		float ScrollSpeed = 50.f;
+		float ScrollSpeed = 80.f;
 		scroll += ScrollSpeed * elapsed;
 	}
 
 	// Adjust player position
 	{
-		float PlayerSpeed = space_pressed ? 300.f : 100.0f;
+		float PlayerSpeed = space_pressed ? 200.f : 100.0f;
 
 		int x_delta = 0;
 		int y_delta = 0;
-		if (left_pressed) x_delta--;
-		if (right_pressed) x_delta++;
-		if (down_pressed) y_delta--;
-		if (up_pressed) y_delta++;
+		if (left_pressed) {
+			x_delta--;
+		}
+		if (right_pressed) {
+			x_delta++;
+		}
+		if (down_pressed) {
+			y_delta--;
+		}
+		if (up_pressed) {
+			y_delta++;
+		}
 
 		// Make diagonal movement same speed
 		static float sqrt2_recip = 1.f / sqrtf(2.f);
@@ -159,7 +185,7 @@ void PlayMode::update(float elapsed) {
 			scroll -= screen_width_px;
 			player_at.x -= screen_width_px;
 			cur_obstacle = next_obstacle;
-			next_obstacle = std::rand()%3;
+			next_obstacle = 1 + std::rand()%(num_obstacles - 1);
 		}
 		for (uint32_t y = 0; y < PPU466::BackgroundHeight/2; ++y) {
 			for (uint32_t x = 0; x < PPU466::BackgroundWidth/2; ++x) {

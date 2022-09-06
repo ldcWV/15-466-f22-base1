@@ -32,12 +32,15 @@ struct PlayMode : Mode {
 	//current x of left side of screen
 	float scroll = 0.f;
 
+	//total number of obstacles
+	uint16_t num_obstacles = 0;
+
 	//library of all possible obstacles
-	Obstacle obstacles[100];
+	Obstacle obstacles[1000];
 
 	//tracks indices of current and next obstacles
-	uint8_t cur_obstacle = 0;
-	uint8_t next_obstacle = 0;
+	uint16_t cur_obstacle = 0;
+	uint16_t next_obstacle = 0;
 
 	//----- drawing handled by PPU466 -----
 
