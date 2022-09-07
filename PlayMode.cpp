@@ -12,6 +12,8 @@
 
 #include <random>
 
+#define TILE_SIZE 8
+
 PlayMode::PlayMode() {
 	//TODO:
 	// you *must* use an asset pipeline of some sort to generate tiles.
@@ -86,10 +88,10 @@ PlayMode::PlayMode() {
 	};
 
 	//set starting values of scroll and player position
-	uint32_t screen_width_px = PPU466::BackgroundWidth/2 * 8;
-	uint32_t screen_height_px = PPU466::BackgroundHeight/2 * 8;
+	uint32_t screen_width_px = PPU466::BackgroundWidth/2 * TILE_SIZE;
+	uint32_t screen_height_px = PPU466::BackgroundHeight/2 * TILE_SIZE;
 	scroll = float(screen_width_px);
-	player_at.x = float(screen_width_px);
+	player_at.x = 15 * float(screen_width_px) / 8;
 	player_at.y = float(screen_height_px / 2);
 
 }
@@ -178,13 +180,15 @@ void PlayMode::update(float elapsed) {
 	// Update obstacles
 	{
 		// if we just scrolled to a new obstacle:
-		uint32_t screen_width_px = PPU466::BackgroundWidth/2 * 8;
+		uint32_t screen_width_px = PPU466::BackgroundWidth/2 * TILE_SIZE;
 		if (uint32_t(scroll) >= screen_width_px) {
 			scroll -= screen_width_px;
 			player_at.x -= screen_width_px;
 			cur_obstacle = next_obstacle;
 			next_obstacle = 1 + std::rand()%(num_obstacles - 1);
 		}
+		// draw the current and next obstacles on the background
+		// TODO: optimize so this doesn't happen every iteration
 		for (uint32_t y = 0; y < PPU466::BackgroundHeight/2; ++y) {
 			for (uint32_t x = 0; x < PPU466::BackgroundWidth/2; ++x) {
 				bool is_filled = obstacles[cur_obstacle].mask[x] & (1 << y);
@@ -209,6 +213,54 @@ void PlayMode::update(float elapsed) {
 				ppu.background[PPU466::BackgroundWidth/2 + x+PPU466::BackgroundWidth*y] = tile_mask;
 			}
 		}
+	}
+
+	// Check for collisions
+	{
+		uint32_t screen_width_px = PPU466::BackgroundWidth/2 * TILE_SIZE;
+		uint32_t screen_height_px = PPU466::BackgroundHeight/2 * TILE_SIZE;
+		
+		bool collided = false;
+
+		// Check if player is on the screen
+		float sx = player_at.x - scroll;
+		float sy = player_at.y;
+		if (sx < 0 || sx + TILE_SIZE - 1 >= screen_width_px || sy < 0 || sy + TILE_SIZE - 1 >= screen_height_px) {
+			collided = true;
+		}
+
+		// Function to check if a given tile is in bounds, filled, and intersects with the player
+		auto collides = [&](int x, int y) {
+			// Check that this tile is in bounds
+			if (x < 0 || y < 0 || x >= PPU466::BackgroundWidth || y >= PPU466::BackgroundHeight) return false;
+
+			// Check that this tile is filled
+			// Case 1: we are in cur_obstacle
+			if (x < PPU466::BackgroundWidth/2) {
+				bool is_filled = obstacles[cur_obstacle].mask[x] & (1 << y);
+				if (!is_filled) return false;
+			}
+			// Case 2: we are in next_obstacle
+			else {
+				bool is_filled = obstacles[next_obstacle].mask[x - PPU466::BackgroundWidth/2] & (1 << y);
+				if (!is_filled) return false;
+			}
+
+			// Check if this tile intersects with the player's position
+			bool x_intersects = abs(player_at.x - x*8) < 8;
+			bool y_intersects = abs(player_at.y - y*8) < 8;
+			return x_intersects && y_intersects;
+		};
+
+		// Need to check the tiles in the 3x3 square surrounding (tx, ty)
+		int tx = int(player_at.x / TILE_SIZE);
+		int ty = int(player_at.y / TILE_SIZE);
+		for (int x = tx-1; x <= tx+1; x++) {
+			for (int y = ty-1; y <= ty+1; y++) {
+				collided |= collides(x, y);
+			}
+		}
+		assert(!collided);
 	}
 }
 
