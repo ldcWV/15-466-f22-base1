@@ -17,6 +17,7 @@ struct PlayMode : Mode {
 	virtual ~PlayMode();
 
 	//functions called by main loop:
+	virtual void StartGame();
 	virtual bool handle_event(SDL_Event const &, glm::uvec2 const &window_size) override;
 	virtual void update(float elapsed ) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
@@ -44,6 +45,9 @@ struct PlayMode : Mode {
 
 	//total elapsed time
 	float tot_elapsed = 0;
+
+	//whether or not the player has died
+	bool game_over = false;
 
 	//----- drawing handled by PPU466 -----
 

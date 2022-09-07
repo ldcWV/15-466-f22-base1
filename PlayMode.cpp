@@ -87,20 +87,30 @@ PlayMode::PlayMode() {
 		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
 	};
 
-	//set starting values of scroll and player position
-	uint32_t screen_width_px = PPU466::BackgroundWidth/2 * TILE_SIZE;
-	uint32_t screen_height_px = PPU466::BackgroundHeight/2 * TILE_SIZE;
-	scroll = float(screen_width_px);
-	player_at.x = 15 * float(screen_width_px) / 8;
-	player_at.y = float(screen_height_px / 2);
+	StartGame();
 
 }
 
 PlayMode::~PlayMode() {
 }
 
-bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
+void PlayMode::StartGame() {
+	uint32_t screen_width_px = PPU466::BackgroundWidth/2 * TILE_SIZE;
+	uint32_t screen_height_px = PPU466::BackgroundHeight/2 * TILE_SIZE;
 
+	cur_obstacle = 0;
+	next_obstacle = 0;
+
+	scroll = float(screen_width_px);
+	player_at.x = 15 * float(screen_width_px) / 8;
+	player_at.y = float(screen_height_px / 2);
+
+	tot_elapsed = 0;
+
+	game_over = false;
+}
+
+bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 	if (evt.type == SDL_KEYDOWN) {
 		if (evt.key.keysym.sym == SDLK_LEFT) {
 			left_pressed = true;
@@ -137,10 +147,23 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		}
 	}
 
+	if (game_over) {
+		if (evt.type == SDL_KEYDOWN) {
+			if (evt.key.keysym.sym == SDLK_r) {
+				StartGame();
+				return true;
+			}
+		}
+		return false;
+	}
+
+
 	return false;
 }
 
 void PlayMode::update(float elapsed) {
+	if (game_over) return;
+
 	// Adjust scrolling
 	{
 		tot_elapsed += elapsed;
@@ -182,35 +205,36 @@ void PlayMode::update(float elapsed) {
 		// if we just scrolled to a new obstacle:
 		uint32_t screen_width_px = PPU466::BackgroundWidth/2 * TILE_SIZE;
 		if (uint32_t(scroll) >= screen_width_px) {
+			// shift player_at and scroll back by a screen and shift over the backgrounds
 			scroll -= screen_width_px;
 			player_at.x -= screen_width_px;
 			cur_obstacle = next_obstacle;
 			next_obstacle = 1 + std::rand()%(num_obstacles - 1);
-		}
-		// draw the current and next obstacles on the background
-		// TODO: optimize so this doesn't happen every iteration
-		for (uint32_t y = 0; y < PPU466::BackgroundHeight/2; ++y) {
-			for (uint32_t x = 0; x < PPU466::BackgroundWidth/2; ++x) {
-				bool is_filled = obstacles[cur_obstacle].mask[x] & (1 << y);
-				uint16_t tile_mask;
-				if (is_filled) {
-					tile_mask = 0;
-				} else {
-					tile_mask = 0x101;
+
+			// redraw the backgrounds with new obstacles
+			for (uint32_t y = 0; y < PPU466::BackgroundHeight/2; ++y) {
+				for (uint32_t x = 0; x < PPU466::BackgroundWidth/2; ++x) {
+					bool is_filled = obstacles[cur_obstacle].mask[x] & (1 << y);
+					uint16_t tile_mask;
+					if (is_filled) {
+						tile_mask = 0;
+					} else {
+						tile_mask = 0x101;
+					}
+					ppu.background[x+PPU466::BackgroundWidth*y] = tile_mask;
 				}
-				ppu.background[x+PPU466::BackgroundWidth*y] = tile_mask;
 			}
-		}
-		for (uint32_t y = 0; y < PPU466::BackgroundHeight/2; ++y) {
-			for (uint32_t x = 0; x < PPU466::BackgroundWidth/2; ++x) {
-				bool is_filled = obstacles[next_obstacle].mask[x] & (1 << y);
-				uint16_t tile_mask;
-				if (is_filled) {
-					tile_mask = 0;
-				} else {
-					tile_mask = 0x101;
+			for (uint32_t y = 0; y < PPU466::BackgroundHeight/2; ++y) {
+				for (uint32_t x = 0; x < PPU466::BackgroundWidth/2; ++x) {
+					bool is_filled = obstacles[next_obstacle].mask[x] & (1 << y);
+					uint16_t tile_mask;
+					if (is_filled) {
+						tile_mask = 0;
+					} else {
+						tile_mask = 0x101;
+					}
+					ppu.background[PPU466::BackgroundWidth/2 + x+PPU466::BackgroundWidth*y] = tile_mask;
 				}
-				ppu.background[PPU466::BackgroundWidth/2 + x+PPU466::BackgroundWidth*y] = tile_mask;
 			}
 		}
 	}
@@ -220,13 +244,11 @@ void PlayMode::update(float elapsed) {
 		uint32_t screen_width_px = PPU466::BackgroundWidth/2 * TILE_SIZE;
 		uint32_t screen_height_px = PPU466::BackgroundHeight/2 * TILE_SIZE;
 		
-		bool collided = false;
-
 		// Check if player is on the screen
 		float sx = player_at.x - scroll;
 		float sy = player_at.y;
 		if (sx < 0 || sx + TILE_SIZE - 1 >= screen_width_px || sy < 0 || sy + TILE_SIZE - 1 >= screen_height_px) {
-			collided = true;
+			game_over = true;
 		}
 
 		// Function to check if a given tile is in bounds, filled, and intersects with the player
@@ -257,10 +279,9 @@ void PlayMode::update(float elapsed) {
 		int ty = int(player_at.y / TILE_SIZE);
 		for (int x = tx-1; x <= tx+1; x++) {
 			for (int y = ty-1; y <= ty+1; y++) {
-				collided |= collides(x, y);
+				game_over |= collides(x, y);
 			}
 		}
-		assert(!collided);
 	}
 }
 
