@@ -57,35 +57,31 @@ PlayMode::PlayMode() {
 	ppu.tile_table[1].bit0 = {0, 0, 0, 0, 0, 0, 0, 0};
 	ppu.tile_table[1].bit1 = {0, 0, 0, 0, 0, 0, 0, 0};
 
-	//use sprite 32 as a "player":
-	ppu.tile_table[32].bit0 = {
-		0b01111110,
-		0b11111111,
-		0b11111111,
-		0b11111111,
-		0b11111111,
-		0b11111111,
-		0b11111111,
-		0b01111110,
-	};
-	ppu.tile_table[32].bit1 = {
-		0b00000000,
-		0b00000000,
-		0b00011000,
-		0b00100100,
-		0b00000000,
-		0b00100100,
-		0b00000000,
-		0b00000000,
-	};
+	//player's color palette
+	std::ifstream fin2 (data_path("data/processed_player.dat"));
+	for (int i = 0; i < 4; i++) {
+		int r, g, b, a;
+		fin2 >> r >> g >> b >> a;
+		std::cout << r << " " << g << " " << b << " " << a << "\n";
+		ppu.palette_table[7][i] = {r, g, b, a};
+	}
 
-	//used for the player:
-	ppu.palette_table[7] = {
-		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
-		glm::u8vec4(0xff, 0xff, 0x00, 0xff),
-		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
-		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
-	};
+	//player sprite
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			int x; fin2 >> x;
+			if (x & 1) {
+				ppu.tile_table[32].bit0[7 - i] |= (1 << j);
+			} else {
+				ppu.tile_table[32].bit0[7 - i] &= ~(1 << j);
+			}
+			if (x & 2) {
+				ppu.tile_table[32].bit1[7 - i] |= (1 << j);
+			} else {
+				ppu.tile_table[32].bit1[7 - i] &= ~(1 << j);
+			}
+		}
+	}
 
 	StartGame();
 
